@@ -1,0 +1,11 @@
+# Core pipeline. Python >= 3.12 (SafeTune's floor).
+numpy>=2.0
+torch>=2.5
+transformers>=5.0
+huggingface_hub>=1.0
+accelerate
+
+# The three Lexsi track repos.
+curatorkit>=0.1.24
+safetune>=0.1.16
+auditkit[transformers]>=1.1.7

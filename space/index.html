@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fuzzy Abstention</title>
+<style>
+  :root{
+    --bg:#ffffff; --fg:#16181d; --muted:#5f6570; --line:#e3e6ea;
+    --accent:#2563eb; --bad:#c2410c; --good:#15803d; --chip:#f3f5f8;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1115; --fg:#e8eaee; --muted:#9aa2ad; --line:#272b33;
+      --accent:#6ea8ff; --bad:#fb923c; --good:#4ade80; --chip:#191d24;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1115; --fg:#e8eaee; --muted:#9aa2ad; --line:#272b33;
+    --accent:#6ea8ff; --bad:#fb923c; --good:#4ade80; --chip:#191d24;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:16px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-text-size-adjust:100%}
+  .wrap{max-width:900px;margin:0 auto;padding:40px 16px 80px}
+  h1{font-size:2rem;line-height:1.2;margin:0 0 6px;letter-spacing:-.02em}
+  h2{font-size:1.3rem;margin:38px 0 10px;letter-spacing:-.01em}
+  h3{font-size:1.05rem;margin:26px 0 8px}
+  .sub{color:var(--muted);margin:0 0 28px;font-size:1.05rem}
+  p{margin:0 0 14px}
+  code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:.87em}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:.92rem}
+  th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;
+    vertical-align:top}
+  th{font-weight:600;color:var(--muted);font-size:.83rem;text-transform:uppercase;
+    letter-spacing:.04em}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:28px 0 0;
+    flex-wrap:wrap}
+  .tabs button{background:none;border:0;border-bottom:2px solid transparent;
+    padding:10px 14px;font:inherit;font-size:.95rem;color:var(--muted);cursor:pointer}
+  .tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent);
+    font-weight:600}
+  .panel{display:none;padding-top:8px}
+  .panel.on{display:block}
+  blockquote{margin:18px 0;padding:14px 18px;border-left:3px solid var(--accent);
+    background:var(--chip);border-radius:0 8px 8px 0}
+  blockquote p:last-child{margin:0}
+  .big{font-size:1.1rem}
+  .bar{display:inline-block;vertical-align:middle;width:min(200px,38vw);height:9px;
+    background:var(--line);border-radius:5px;overflow:hidden}
+  .bar > i{display:block;height:9px;background:var(--accent)}
+  .ctl{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:18px 0}
+  select,input[type=range]{font:inherit;padding:6px 8px;border:1px solid var(--line);
+    border-radius:7px;background:var(--bg);color:var(--fg)}
+  input[type=range]{flex:1;min-width:180px;padding:0}
+  .card{border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}
+  .q{font-size:1.12rem;font-weight:600;margin:0 0 12px;letter-spacing:-.01em}
+  .row{display:flex;gap:10px;align-items:center;margin:5px 0;font-size:.9rem}
+  .row code{width:min(170px,42vw);flex-shrink:0}
+  .yes{color:var(--good);font-weight:600}
+  .no{color:var(--bad);font-weight:600}
+  .pill{display:inline-block;background:var(--chip);border:1px solid var(--line);
+    border-radius:999px;padding:2px 10px;font-size:.8rem;color:var(--muted)}
+  .foot{margin-top:50px;padding-top:18px;border-top:1px solid var(--line);
+    color:var(--muted);font-size:.87rem}
+  .ans{background:var(--chip);border-radius:8px;padding:10px 12px;margin:10px 0;
+    font-size:.92rem;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Fuzzy Abstention</h1>
+  <p class="sub">Testing whether a single confidence score is the right shape for
+  deciding when a language model should stay quiet.</p>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-p="finding">The finding</button>
+    <button role="tab" aria-selected="false" data-p="pairs">Minimal pairs</button>
+    <button role="tab" aria-selected="false" data-p="explore">Explore all 210</button>
+  </div>
+
+  <section class="panel on" id="finding"></section>
+  <section class="panel" id="pairs"></section>
+  <section class="panel" id="explore">
+    <div class="ctl">
+      <label>Kind
+        <select id="filter"></select>
+      </label>
+      <input type="range" id="slider" min="0" max="209" value="0">
+      <span class="pill" id="counter"></span>
+    </div>
+    <div id="item"></div>
+  </section>
+
+  <div class="foot">
+    Probe predictions are <b>out-of-fold</b>: every item was scored by a probe that
+    never trained on it. All numbers come from real runs of
+    <code>CohereLabs/tiny-aya-global</code> on Hugging Face Jobs.
+    Pipeline: CuratorKIT &rarr; SafeTune &rarr; AuditKIT.
+    <br><br>
+    This page shows measured results and does not run the 3.35B model live.
+  </div>
+</div>
+
+<script>
+const LABELS = ["answerable_known","answerable_unknown","unanswerable",
+                "context_dependent","underspecified"];
+const NICE = {answerable_known:"Answerable, known",
+              answerable_unknown:"Answerable, long-tail",
+              unanswerable:"Unanswerable",
+              context_dependent:"Context-dependent",
+              underspecified:"Underspecified"};
+const ASK = new Set(["context_dependent","underspecified"]);
+const pct = x => (x*100).toFixed(1) + "%";
+const esc = s => String(s).replace(/[&<>"]/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let D = null;
+
+function policyFor(pred){
+  if (pred === "answerable_known") return "ANSWER";
+  if (ASK.has(pred)) return "ASK for context";
+  return "ABSTAIN";
+}
+
+function renderFinding(){
+  const ece  = D.analysis.ece_by_label.verbalised;
+  const conf = D.analysis.mean_conf_by_label;
+  const cv   = D.cv;
+  const acc = {};
+  LABELS.forEach(l => {
+    const xs = D.items.filter(i => i.label === l);
+    acc[l] = xs.filter(i => i.correct).length / Math.max(xs.length,1);
+  });
+
+  let t1 = `<table><thead><tr><th>Question kind</th><th class="n">n</th>
+    <th class="n">accuracy</th><th class="n">stated confidence</th>
+    <th class="n">ECE</th></tr></thead><tbody>`;
+  LABELS.forEach(l => {
+    const n = D.items.filter(i => i.label === l).length;
+    t1 += `<tr><td>${NICE[l]}</td><td class="n">${n}</td>
+      <td class="n">${pct(acc[l])}</td>
+      <td class="n">${conf[l].verbalised.toFixed(3)}</td>
+      <td class="n"><b>${ece[l].toFixed(3)}</b></td></tr>`;
+  });
+  t1 += `<tr><td><i>aggregate</i></td><td class="n">210</td><td class="n">57.1%</td>
+    <td class="n">&mdash;</td><td class="n"><i>${ece.__overall__.toFixed(3)}</i></td>
+    </tr></tbody></table>`;
+
+  let t2 = `<table><thead><tr><th>Policy</th><th class="n">coverage</th>
+    <th class="n">error when answering</th><th class="n">over-abstention</th>
+    </tr></thead><tbody>`;
+  cv.policy_table.forEach(r => {
+    if (r.policy.indexOf("probe P") === 0) return;
+    const hero = r.policy.indexOf("probe") === 0;
+    t2 += `<tr><td>${hero ? "<b>"+esc(r.policy)+"</b>" : esc(r.policy)}</td>
+      <td class="n">${pct(r.coverage)}</td>
+      <td class="n">${hero?"<b>":""}${pct(r.error_when_answering)}${hero?"</b>":""}</td>
+      <td class="n">${hero?"<b>":""}${pct(r.over_abstention_on_known)}${hero?"</b>":""}</td>
+      </tr>`;
+  });
+  t2 += `</tbody></table>`;
+
+  const [lo,hi] = cv.oof_accuracy_ci;
+  const [ap,apl,aph] = cv.auroc_probe;
+  const [av,avl,avh] = cv.auroc_verbalised;
+
+  document.getElementById("finding").innerHTML = `
+    <h2>A scalar is the wrong shape for &ldquo;should I answer?&rdquo;</h2>
+    <p>The usual way to decide whether a model should abstain is to take
+    <b>one number</b> &mdash; a token logprob, a verbalised confidence, a
+    <code>P(True)</code> head &mdash; threshold it, and answer or stay quiet. That
+    assumes every question has one proposition with one truth value.</p>
+    <p>Richard Ngo&rsquo;s <i>&ldquo;Why I&rsquo;m not a Bayesian&rdquo;</i> argues that
+    representation is malformed: real claims have fuzzy, context-dependent truth values.
+    We tested it.</p>
+
+    <h3>The model&rsquo;s self-report barely moves</h3>
+    ${t1}
+    <p>Confidence is <b>near-perfectly calibrated</b> where a question has one clean
+    answer (ECE 0.018) and <b>catastrophically wrong</b> where it does not (0.904).
+    The aggregate reports neither.</p>
+    <blockquote class="big"><p>Accuracy spans <b>0.0% &rarr; 93.7%</b> across those rows.
+    Stated confidence spans <b>0.865 &rarr; 0.955</b>.</p>
+    <p>Nine points of confidence over ninety-four points of accuracy.</p></blockquote>
+    <p>Its AUROC for predicting its own correctness is
+    <b>${av.toFixed(3)}</b> [${avl.toFixed(3)}, ${avh.toFixed(3)}] &mdash; the interval
+    includes chance.</p>
+
+    <h3>The information is there; the self-report doesn&rsquo;t carry it</h3>
+    <p>A linear probe on the residual stream, read from the <b>prompt alone, before any
+    token is generated</b>, recovers the question&rsquo;s epistemic kind:
+    <b>${pct(cv.oof_accuracy)} accuracy</b> [${pct(lo)}, ${pct(hi)}] under 5-fold
+    cross-validation, against a 20% chance baseline. The layer was chosen inside each
+    training fold; folds landed on ${cv.chosen_layers.join(", ")}.</p>
+
+    <h3>What it buys, at matched coverage</h3>
+    ${t2}
+    <p>Same coverage, <b>3.3&times; lower error</b> and <b>4&times; lower
+    over-abstention</b> than the best scalar baseline.</p>
+
+    <h3>The result we did not want, reported anyway</h3>
+    <p>Flattened into a single scalar, the probe is <b>no better</b> than the
+    model&rsquo;s self-report: AUROC <b>${ap.toFixed(3)}</b>
+    [${apl.toFixed(3)}, ${aph.toFixed(3)}] against <b>${av.toFixed(3)}</b>
+    [${avl.toFixed(3)}, ${avh.toFixed(3)}].</p>
+    <blockquote><p>That is the thesis, not a hole in it. The probe wins by
+    <b>not being a number</b> &mdash; five classes driving a three-way policy, where
+    <i>ask for context</i> is an available move. Collapse it to one scalar and the
+    advantage disappears entirely.</p></blockquote>`;
+}
+
+function renderPairs(){
+  const by = {};
+  D.items.forEach(i => { if (i.pair_id) (by[i.pair_id] ||= []).push(i); });
+  let rows = "";
+  Object.keys(by).sort().forEach(pid => {
+    const m = by[pid]; if (m.length !== 2) return;
+    const amb = m.find(x => ASK.has(x.label));
+    const oth = m.find(x => x !== amb);
+    if (!amb || !oth) return;
+    const gap = (amb.verbalised != null && oth.verbalised != null)
+      ? Math.abs(amb.verbalised - oth.verbalised).toFixed(3) : "&ndash;";
+    const mark = c => c ? '<span class="yes">yes</span>' : '<span class="no">no</span>';
+    rows += `<tr><td>${esc(amb.question)}</td>
+      <td class="n">${amb.verbalised?.toFixed(2) ?? "-"}</td><td>${mark(amb.correct)}</td>
+      <td>${esc(oth.question)}</td>
+      <td class="n">${oth.verbalised?.toFixed(2) ?? "-"}</td><td>${mark(oth.correct)}</td>
+      <td class="n">${gap}</td></tr>`;
+  });
+  document.getElementById("pairs").innerHTML = `
+    <h2>Minimal pairs</h2>
+    <p>The tightest evidence here. Each row is <b>one question asked twice</b> &mdash;
+    once without the context that makes it answerable, once with. Both are generated
+    from a template with a context slot, so the two differ in exactly one thing.</p>
+    <blockquote><p>Correctness differs in <b>19 of 31</b> pairs. The mean gap in stated
+    confidence across a pair is <b>0.034</b>.</p></blockquote>
+    <table><thead><tr><th>ambiguous</th><th class="n">conf</th><th>right?</th>
+      <th>context supplied</th><th class="n">conf</th><th>right?</th>
+      <th class="n">|gap|</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderItem(){
+  const f = document.getElementById("filter").value;
+  const pool = D.items.filter(i => f === "all" || i.label === f);
+  const s = document.getElementById("slider");
+  s.max = Math.max(pool.length - 1, 0);
+  const i = pool[Math.min(+s.value, pool.length - 1)];
+  document.getElementById("counter").textContent =
+    pool.length ? `${(+s.value|0)+1} of ${pool.length}` : "none";
+  if (!i){ document.getElementById("item").innerHTML = ""; return; }
+
+  let bars = "";
+  LABELS.forEach(l => {
+    const p = i.probe[l];
+    bars += `<div class="row"><code>${l}</code>
+      <span class="bar"><i style="width:${(p*100).toFixed(1)}%"></i></span>
+      <b>${p.toFixed(2)}</b>${l === i.probe_pred ? " &larr;" : ""}</div>`;
+  });
+  const hit = i.probe_pred === i.label;
+  document.getElementById("item").innerHTML = `
+    <div class="card">
+      <p class="q">${esc(i.question)}</p>
+      <p><span class="pill">true: ${i.label}</span>
+         <span class="pill">probe: ${i.probe_pred} ${hit ? "&#10003;" : "&#10007;"}</span>
+         <span class="pill">behaviour: ${i.behaviour}</span>
+         ${i.hallucinated ? '<span class="pill">hallucinated</span>' : ""}</p>
+      <div class="ans">${esc(i.answer || "(empty)").slice(0,600)}</div>
+      ${bars}
+      <table><tbody>
+        <tr><td>Model&rsquo;s stated confidence</td>
+            <td class="n"><b>${i.verbalised?.toFixed(2) ?? "n/a"}</b></td></tr>
+        <tr><td>Sequence likelihood</td>
+            <td class="n">${i.seq_prob ?? "n/a"}</td></tr>
+        <tr><td>Was it correct?</td><td class="n">
+            ${i.correct ? '<span class="yes">yes</span>' : '<span class="no">no</span>'}
+            </td></tr>
+        <tr><td><b>Policy decision</b></td>
+            <td class="n"><b>${policyFor(i.probe_pred)}</b></td></tr>
+      </tbody></table>
+    </div>`;
+}
+
+fetch("results.json").then(r => r.json()).then(d => {
+  D = d;
+  const sel = document.getElementById("filter");
+  sel.innerHTML = '<option value="all">all</option>' +
+    LABELS.map(l => `<option value="${l}">${NICE[l]}</option>`).join("");
+  renderFinding(); renderPairs(); renderItem();
+  sel.onchange = () => { document.getElementById("slider").value = 0; renderItem(); };
+  document.getElementById("slider").oninput = renderItem;
+  document.querySelectorAll(".tabs button").forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll(".tabs button").forEach(x =>
+        x.setAttribute("aria-selected", String(x === b)));
+      document.querySelectorAll(".panel").forEach(p =>
+        p.classList.toggle("on", p.id === b.dataset.p));
+    };
+  });
+}).catch(e => {
+  document.getElementById("finding").innerHTML =
+    "<p>Could not load results.json &mdash; " + esc(e.message) + "</p>";
+});
+</script>
+</body>
+</html>
