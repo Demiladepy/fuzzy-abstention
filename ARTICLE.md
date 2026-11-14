@@ -281,6 +281,12 @@ decoding is deterministic.
 
 ### Calibration by label — the central finding
 
+![Accuracy versus stated confidence by question kind](https://huggingface.co/datasets/demiladepy/fuzzy-abstention-items/resolve/main/figures/fig1_calibration_gap.png)
+
+*Figure 1. Blue is what the model actually gets right; orange is how confident it says
+it is. The blue bars span the whole chart; the orange bars barely move. ECE per cell
+underneath.*
+
 | Question kind | n | accuracy | stated confidence | **ECE** |
 |---|---:|---:|---:|---:|
 | `answerable_known` | 63 | 93.7% | 0.955 | **0.018** |
@@ -303,6 +309,12 @@ A **50× spread** the aggregate reports neither end of.
 
 The scalar family is not uniformly useless — sequence likelihood carries real signal. It
 is the **self-report** that does not.
+
+![Risk-coverage curves](https://huggingface.co/datasets/demiladepy/fuzzy-abstention-items/resolve/main/figures/fig2_risk_coverage.png)
+
+*Figure 2. A useful confidence signal bends down to the left — answering fewer questions
+should mean fewer mistakes. Sequence likelihood does. The self-report stays nearly flat
+against the answer-everything baseline.*
 
 ### Head-to-head with SafeTune, on the binary task
 
@@ -336,8 +348,20 @@ is the **self-report** that does not.
 | sequence likelihood @ matched | 29.5% | 37.1% | 38.1% |
 | verbalised @ matched | 66.7% | 60.7% | 6.3% |
 
+![Policy comparison at matched coverage](https://huggingface.co/datasets/demiladepy/fuzzy-abstention-items/resolve/main/figures/fig3_policy.png)
+
+*Figure 3. At the same coverage the probe policy cuts error 3.3× and over-abstention 4×
+against the best scalar.*
+
 `verbalised` could not reach matched coverage — its values are so compressed that no
 threshold cuts at 29.5%. The nine-point span has an operational consequence.
+
+![Minimal pairs: correctness flips while confidence does not](https://huggingface.co/datasets/demiladepy/fuzzy-abstention-items/resolve/main/figures/fig4_minimal_pairs.png)
+
+*Figure 4. Each dot is one minimal pair. Correctness flips in 19 of 31 while the stated
+confidence moves 0.034 on average. Note the dots sit at 0.00, 0.05 and 0.10: the
+self-report is quantised to coarse steps, which is the mechanical reason no threshold
+can cut it finely.*
 
 ### What didn't work
 
