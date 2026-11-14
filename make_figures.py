@@ -177,13 +177,103 @@ def fig4(rows):
     plt.close(fig)
 
 
+def fig5():
+    """Cross-lingual transfer, if the multilingual run exists."""
+    p = Path("runs_dl/transfer_results.json")
+    if not p.exists():
+        print("  (skipping fig5: no transfer_results.json yet)")
+        return
+    res = json.load(open(p, encoding="utf-8"))
+    key = next((k for k in res if k.startswith("clean")), None)
+    if not key:
+        return
+    per = res[key]["per_language"]
+    names = {"en_heldout": "English\n(held out)", "yo": "Yoruba", "ha": "Hausa",
+             "sw": "Swahili"}
+    order = [k for k in ["en_heldout", "yo", "ha", "sw"] if k in per]
+    acc = [per[k]["acc"] for k in order]
+    lo = [per[k]["acc"] - per[k]["ci"][0] for k in order]
+    hi = [per[k]["ci"][1] - per[k]["acc"] for k in order]
+    cols = [ACC] + [CONF] * (len(order) - 1)
+
+    fig, ax = plt.subplots(figsize=(7.6, 4.8))
+    x = np.arange(len(order))
+    ax.bar(x, acc, 0.55, color=cols, yerr=[lo, hi], capsize=5,
+           error_kw=dict(ecolor=MUTED, lw=1.4))
+    for i, a in enumerate(acc):
+        ax.text(i, a + max(hi) + 0.03, f"{a:.1%}", ha="center", fontsize=11,
+                fontweight="bold", color=cols[i])
+    ax.axhline(0.2, ls=":", color=BAD, lw=1.5)
+    ax.text(len(order) - 0.45, 0.225, "chance (20%)", fontsize=9.5, color=BAD,
+            ha="right")
+    ax.set_xticks(x, [names.get(k, k) for k in order])
+    ax.set_ylim(0, 1.05)
+    ax.set_ylabel("probe accuracy (5-way)")
+    ax.set_title("Does an English-trained probe read epistemic kind in other languages?\n"
+                 "source questions held out, so this is transfer and not memorisation",
+                 pad=16, linespacing=1.5)
+    fig.tight_layout()
+    fig.savefig(OUT / "fig5_transfer.png", dpi=170, bbox_inches="tight")
+    plt.close(fig)
+
+
+def fig0_pipeline():
+    """How the three hackathon repos actually connect."""
+    from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
+
+    fig, ax = plt.subplots(figsize=(11, 4.6))
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 50)
+    ax.axis("off")
+
+    KIT, MINE, OUTP = "#2563eb", "#6b7280", "#15803d"
+
+    def box(x, y, w, h, title, sub, col, fs=10.5):
+        ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.6",
+                                    linewidth=1.8, edgecolor=col,
+                                    facecolor=col + "14"))
+        ax.text(x + w / 2, y + h - 3.2, title, ha="center", va="top", fontsize=fs,
+                fontweight="bold", color=col)
+        ax.text(x + w / 2, y + h - 8.2, sub, ha="center", va="top", fontsize=8.8,
+                color=INK, linespacing=1.45)
+
+    def arrow(x1, y1, x2, y2):
+        ax.add_patch(FancyArrowPatch((x1, y1), (x2, y2), arrowstyle="-|>",
+                                     mutation_scale=15, color="#9aa2ad", lw=1.6,
+                                     shrinkA=0, shrinkB=0))
+
+    box(1, 24, 19, 17, "build_dataset.py", "210 items\n5 epistemic kinds\n31 minimal pairs", MINE)
+    box(23, 24, 20, 17, "CuratorKIT", "schema gate\nexact + MinHash dedup\nprovenance manifest", KIT)
+    box(46, 24, 21, 17, "HF Jobs · T4", "generations\nlogprobs\n37-layer activations", MINE)
+
+    box(23, 2, 20, 17, "SafeTune", "LinearProbeGuard\nbinary baseline\n5-fold out-of-fold", KIT)
+    box(46, 2, 21, 17, "cv_probe.py", "5-way probe\nlayer chosen in-fold\nthree-way policy", MINE)
+    box(70, 13, 20, 17, "AuditKIT", "custom metric\ncompare()\nfingerprints", KIT)
+
+    arrow(20, 32.5, 23, 32.5)
+    arrow(43, 32.5, 46, 32.5)
+    arrow(56.5, 24, 56.5, 19)        # activations down to the probe
+    arrow(46, 10.5, 43, 10.5)        # probe <- safetune comparison
+    arrow(67, 10.5, 74, 13)
+    arrow(67, 32.5, 74, 30)
+
+    ax.text(50, 46.5, "CuratorKIT  →  SafeTune  →  AuditKIT", ha="center",
+            fontsize=13, fontweight="bold", color=INK)
+    ax.text(1, 0.2, "blue = hackathon repo     grey = ours", fontsize=9, color=MUTED)
+    fig.tight_layout()
+    fig.savefig(OUT / "fig0_pipeline.png", dpi=170, bbox_inches="tight")
+    plt.close(fig)
+
+
 def main() -> int:
     OUT.mkdir(exist_ok=True)
+    fig0_pipeline()
     rows, cv, ana = load()
     fig1(rows, ana)
     fig2(rows)
     fig3(cv)
     fig4(rows)
+    fig5()
     for f in sorted(OUT.glob("*.png")):
         print(f"  {f}  {f.stat().st_size // 1024} KB")
     return 0

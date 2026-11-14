@@ -145,19 +145,12 @@ Evaluation spine for the gold-answerable subset, with a custom metric registered
 
 ### How the repos connect
 
-```
-build_dataset.py ─► CuratorKIT (schema, dedup, provenance) ─► items_curated.jsonl
-                                                                      │
-                                      HF Jobs: generations + activations
-                                                                      │
-                                   ┌──────────────────────────────────┤
-                                   ▼                                  ▼
-                   SafeTune LinearProbeGuard                 our 5-way probe
-                      (binary baseline)                   (cv_probe.py, 5-fold)
-                                   └──────────────┬───────────────────┘
-                                                  ▼
-                                   AuditKIT (scoring, compare, fingerprints)
-```
+![Pipeline: CuratorKIT to SafeTune to AuditKIT](https://huggingface.co/datasets/demiladepy/fuzzy-abstention-items/resolve/main/figures/fig0_pipeline.png)
+
+*Figure 0. Blue boxes are hackathon repos, grey are ours. CuratorKIT gates the items
+before anything is measured; the GPU run produces generations and 37-layer activations;
+SafeTune's guard and our probe are evaluated against each other under the same 5-fold
+protocol; AuditKIT scores and compares the outcomes.*
 
 ---
 
