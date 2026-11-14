@@ -8,12 +8,26 @@ over 210 questions labelled by *epistemic kind* rather than by correctness.
 
 | | |
 |---|---|
+| 📝 Write-up | [ARTICLE.md](ARTICLE.md) · [abstract](ABSTRACT.md) |
 | 📊 Dataset | [demiladepy/fuzzy-abstention-items](https://huggingface.co/datasets/demiladepy/fuzzy-abstention-items) |
+| 🧪 Probe | [demiladepy/fuzzy-abstention-probe](https://huggingface.co/demiladepy/fuzzy-abstention-probe) |
 | 🤔 Demo | [demiladepy/fuzzy-abstention](https://huggingface.co/spaces/demiladepy/fuzzy-abstention) |
-| 📝 Write-up | [ARTICLE.md](ARTICLE.md) |
 
 Built for the Lexsi AI Safety and Alignment Hackathon, Track 2b, problem statement 13.
 Pipeline: **CuratorKIT → SafeTune → AuditKIT**. Total compute cost: **$0.37**.
+
+### The comparison that matters
+
+Against SafeTune's own `LinearProbeGuardTrainer` — one layer, one threshold, a binary
+verdict — on the binary task, under the identical 5-fold out-of-fold protocol:
+
+| | AUROC |
+|---|---|
+| SafeTune `LinearProbeGuard` | 0.942 [0.893, 0.980] |
+| Ours, `P(answerable_known)` | 0.944 [0.899, 0.981] |
+
+**A tie.** We do not separate better. The advantage appears only at the policy level,
+where a five-class probe can choose *ask which context* and a binary guard cannot.
 
 ---
 
