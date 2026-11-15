@@ -72,6 +72,12 @@ def main() -> int:
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--per-label", type=int, default=21)
     ap.add_argument("--max-new-tokens", type=int, default=64)
+    # One language per job. The three-language run died at 29m55s to a 30-minute job
+    # timeout, and because the upload happens at the end, all 220 completed items were
+    # lost. Each language is ~13 minutes, so splitting keeps every run clear of the
+    # limit and means one failure no longer destroys the others.
+    ap.add_argument("--langs", default=None,
+                    help="comma-separated codes, e.g. 'yo'. Default: all three.")
     args = ap.parse_args()
 
     token = os.environ.get("HF_TOKEN")
@@ -83,7 +89,12 @@ def main() -> int:
     allitems = [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
     per = 1 if args.smoke else args.per_label
     items = stratified(allitems, per)
-    langs = {"yo": "Yoruba"} if args.smoke else LANGS
+    if args.smoke:
+        langs = {"yo": "Yoruba"}
+    elif args.langs:
+        langs = {c: LANGS[c] for c in args.langs.split(",") if c in LANGS}
+    else:
+        langs = LANGS
     print(f"{len(items)} items x {len(langs)} languages = {len(items)*len(langs)} runs",
           flush=True)
 
@@ -155,7 +166,7 @@ def main() -> int:
     with open("out/meta.json", "w", encoding="utf-8") as fh:
         json.dump(meta, fh, indent=2)
 
-    tag = "multilingual_smoke" if args.smoke else "multilingual"
+    tag = "multilingual_smoke" if args.smoke else "multilingual_" + "_".join(langs)
     HfApi(token=token).upload_folder(folder_path="out", path_in_repo=f"runs/{tag}",
                                      repo_id=DATASET, repo_type="dataset")
     print(f"\nuploaded runs/{tag}  hidden={hidden.shape}", flush=True)
